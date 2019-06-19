@@ -1,3 +1,5 @@
+import os
+import pickle
 import numpy as np
 import pandas as pd
 
@@ -16,11 +18,23 @@ class BrainDataset:
 
 
 def read_matrix(file_path):
+    """Reads adjacency matrix from given file paht to txt file
+
+    :param file_path: file path to the adjacency path
+    :type file_path: str
+    :return: adjacency matrix
+    :rtype: numpy.array
+    """
     matrix = np.loadtxt(file_path)
     return matrix
 
 
 def read_functional_connectomes_data():
+    """Reads the meta data for the Functional Connectomes dataset
+
+    :return: DataFrame with data information
+    :rtype pandas.DataFrame
+    """
     data = pd.read_csv('data/1000_Functional_Connectomes_info')[['upload_data.age_range_min',
                                                                  'upload_data.gender',
                                                                  'upload_data.subject_pool',
@@ -30,12 +44,49 @@ def read_functional_connectomes_data():
 
 
 def read_adhd_data():
+    """Reads the meta data for the ADHD dataset
+
+    :return: DataFrame with data information
+    :rtype pandas.DataFrame
+    """
     data = pd.read_csv('data/ADHD200_CC200_info')[['upload_data.age_range_min',
                                                    'upload_data.gender',
                                                    'upload_data.subject_pool',
                                                    'upload_data.network_name']]
     data.columns = ['age', 'gender', 'class', 'network_name']
     return data
+
+
+def find_statistics(dir_path, stats_file):
+    """Find the minimum and maximum values for the coordinates needed for normalization
+
+    :param dir_path: path to the directory containing the dataset files
+    :type dir_path: str
+    :param stats_file: path where to save the calculated information
+    :type stats_file: str
+    :return: dictionary containing the maximum and minimum values for the coordinates
+    :rtype: dict(str, numpy.array)
+    """
+    if os.path.exists(stats_file):
+        with open(stats_file, 'rb') as f:
+            return pickle.load(f)
+    subject_files = os.listdir(dir_path)
+    subject_files = [x for x in subject_files if 'region_xyz_centers' in x]
+    max_vals = [0, 0, 0]
+    min_vals = [0, 0, 0]
+    for file in subject_files:
+        data = np.loadtxt(dir_path + file)
+        maxs = data.max(axis=0).tolist()
+        max_vals = [max(x, y) for x, y in zip(max_vals, maxs)]
+        mins = data.min(axis=0).tolist()
+        min_vals = [min(x, y) for x, y in zip(min_vals, mins)]
+
+    stats = {'max': np.array(max_vals),
+             'min': np.array(min_vals)}
+
+    with open(stats_file, 'wb') as f:
+        pickle.dump(stats, f, pickle.HIGHEST_PROTOCOL)
+    return stats
 
 
 def data_generator(dataset, config, shuffle=True):

@@ -40,17 +40,17 @@ class BrainConvolutionModel:
         :return: keras model
         :rtype: KM.Model
         """
-        x = KL.Input(batch_shape=[self.config.BATCH_SIZE, self.config.NODE_DIM, self.config.NODE_DIM],
+        x = KL.Input(batch_shape=[self.config.BATCH_SIZE, None, self.config.NODE_DIM],
                      name='input_node_features', dtype=tf.float32)
 
-        adj = KL.Input(batch_shape=[self.config.BATCH_SIZE, self.config.NODE_DIM, self.config.NODE_DIM, 1],
+        adj = KL.Input(batch_shape=[self.config.BATCH_SIZE, None, None, 1],
                        name='input_adjacency_matrix', dtype=tf.float32)
         encoded_state = self.graph_encoder(x, adj)
 
         dense_out = KL.Dense(128, name='dense_layer1')(encoded_state)
         dense_out = KL.LeakyReLU()(dense_out)
         dense_out = KL.Dropout(0.1)(dense_out)
-        dense_out = KL.Dense(512, name='dense_layer2')(dense_out)
+        dense_out = KL.Dense(64, name='dense_layer2')(dense_out)
         dense_out = KL.LeakyReLU()(dense_out)
         dense_out = KL.Dropout(0.1)(dense_out)
         output = KL.Dense(self.config.NUM_CLASSES, activation='softmax', name='dense_layer3')(dense_out)
