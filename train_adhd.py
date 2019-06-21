@@ -16,10 +16,9 @@ class ADHD(BrainDataset):
         super().__init__(dataset_name, meta_data)
         self.subject_ids = subject_ids
         self.stats = stats
-        self.class_mappings = {'ADHD-Combined': np.array([0, 0, 0, 1]),
-                               'ADHD-Hyperactive/Impulsive': np.array([0, 0, 1, 0]),
-                               'ADHD-Inattentive': np.array([0, 1, 0, 0]),
-                               'Typically Developing': np.array([1, 0, 0, 0])}
+        self.class_mappings = {'ADHD-Combined': np.array([1, 0, 0]),
+                               'ADHD-Inattentive': np.array([0, 1, 0]),
+                               'Typically Developing': np.array([0, 0, 1])}
 
     def get_brain_graph_and_class(self, subject_id):
         """Returns the brain graph and class for the given subject id
@@ -31,7 +30,6 @@ class ADHD(BrainDataset):
         """
         matrix = read_matrix(f'data/ADHD200_CC200/{subject_id}_connectivity_matrix_file.txt')
         matrix[matrix < 0] = 0
-        matrix = np.expand_dims(matrix, axis=-1)
         coordinates = np.loadtxt(f'data/ADHD200_CC200/{subject_id}_region_xyz_centers_file.txt')
         node_features = (coordinates - self.stats['min']) / (self.stats['max'] - self.stats['min'])
         class_id = self.meta_data.loc[self.meta_data['network_name'] == subject_id]['class'].values[0]
@@ -49,6 +47,56 @@ class ADHD(BrainDataset):
         class_id = self.meta_data.loc[self.meta_data['network_name'] == subject_id]['class'].values[0]
         encoded_class = self.class_mappings[class_id]
         return encoded_class
+
+
+def train_brain_convolution_model(subject_ids):
+    data = read_adhd_data()
+    stats = find_statistics('data/ADHD200_CC200/', 'data/adhd_stats.pkl')
+    train_subject_ids, val_subject_ids = train_validation_split(subject_ids, 0.1)
+    train_dataset = ADHD('ADHD200_CC200', train_subject_ids,
+                         data.loc[data['network_name'].isin(train_subject_ids)], stats)
+    validation_dataset = ADHD('ADHD200_CC200', val_subject_ids,
+                              data.loc[data['network_name'].isin(val_subject_ids)], stats)
+    config = Config(node_dim=3, num_classes=3, batch_size=2)
+
+    train_data_generator = data_generator(train_dataset, config, shuffle=True)
+    val_data_generator = data_generator(validation_dataset, config, shuffle=True)
+
+    model = BrainConvolutionModel(config).build()
+
+    model_filepath = 'trained/model/adhd_brain_convolution-{epoch:02d}-{val_loss:.2f}.h5'
+    logs_filepath = 'trained/logs/adhd.log'
+
+    if not os.path.exists(os.path.dirname(logs_filepath)):
+        os.makedirs(os.path.dirname(logs_filepath))
+
+    if not os.path.exists(os.path.dirname(model_filepath)):
+        os.makedirs(os.path.dirname(model_filepath))
+
+    checkpoint = keras.callbacks.ModelCheckpoint(model_filepath, verbose=1, save_weights_only=True, mode='min')
+    csv_logger = keras.callbacks.CSVLogger(logs_filepath)
+
+    model.summary()
+    optimizer = Adam(0.0001, amsgrad=True)
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=optimizer,
+                  metrics=['accuracy'])
+    model.fit_generator(train_data_generator, 10, 50, callbacks=[checkpoint, csv_logger],
+                        validation_data=val_data_generator, validation_steps=len(val_subject_ids) // config.BATCH_SIZE)
+
+    return model
+
+
+def test_brain_convolution_model(subject_ids, trained_model):
+    data = read_adhd_data()
+    stats = find_statistics('data/ADHD200_CC200/', 'data/adhd_stats.pkl')
+    test_dataset = ADHD('ADHD200_CC200', subject_ids,
+                        data.loc[data['network_name'].isin(train_subject_ids)], stats)
+    config = Config(node_dim=3, num_classes=3, batch_size=2)
+
+    test_data_generator = data_generator(test_dataset, config)
+    predictions = trained_model.predict_generator(test_data_generator)
+    return predictions
 
 
 def train_validation_split(subject_ids, split=0.1):
@@ -80,7 +128,7 @@ if __name__ == '__main__':
                          data.loc[data['network_name'].isin(train_subject_ids)], stats)
     validation_dataset = ADHD('ADHD200_CC200', val_subject_ids,
                               data.loc[data['network_name'].isin(val_subject_ids)], stats)
-    config = Config(node_dim=3, num_classes=4, batch_size=3)
+    config = Config(node_dim=3, num_classes=4, batch_size=2)
 
     train_data_generator = data_generator(train_dataset, config, shuffle=True)
     val_data_generator = data_generator(validation_dataset, config, shuffle=True)
@@ -100,9 +148,9 @@ if __name__ == '__main__':
     csv_logger = keras.callbacks.CSVLogger(logs_filepath)
 
     model.summary()
-    optimizer = Adam(0.001, amsgrad=True)
+    optimizer = Adam(0.0001, amsgrad=True)
     model.compile(loss='categorical_crossentropy',
                   optimizer=optimizer,
                   metrics=['accuracy'])
-    model.fit_generator(train_data_generator, 10, 20, callbacks=[checkpoint, csv_logger],
+    model.fit_generator(train_data_generator, 10, 50, callbacks=[checkpoint, csv_logger],
                         validation_data=val_data_generator, validation_steps=len(val_subject_ids) // config.BATCH_SIZE)

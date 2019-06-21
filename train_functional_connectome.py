@@ -28,7 +28,6 @@ class FunctionalConnectomes(BrainDataset):
         """
         matrix = read_matrix(f'data/1000_Functional_Connectomes/{subject_id}_connectivity_matrix_file.txt')
         matrix[matrix < 0] = 0
-        matrix = np.expand_dims(matrix, axis=-1)
         coordinates = np.loadtxt(f'data/1000_Functional_Connectomes/{subject_id}_region_xyz_centers_file.txt')
         node_features = (coordinates - self.stats['min']) / (self.stats['max'] - self.stats['min'])
         class_id = self.meta_data.loc[self.meta_data['network_name'] == subject_id]['gender'].values[0]
