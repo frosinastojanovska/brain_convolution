@@ -121,7 +121,7 @@ def evaluate_ordinary_classification(folds, method):
         classifier.fit(x, y)
         x, y = get_data(test)
         predicted = classifier.predict(x)
-        metrics.append(evaluation_results(y, predicted, 3))
+        metrics.append(evaluation_results(y, predicted))
 
     metrics = np.array(metrics)
     print("Accuracy: %0.2f (+/- %0.2f)" % (metrics[:, 0].mean(), metrics[:, 0].std() * 2))
@@ -140,7 +140,7 @@ def evaluate_brain_convolution_model(folds):
         _, y = get_data(test)
         predicted = test_brain_convolution_model(test, trained_model)
         predicted = np.argmax(predicted, axis=1)
-        metrics.append(evaluation_results(y, predicted, 3))
+        metrics.append(evaluation_results(y, predicted))
 
     metrics = np.array(metrics)
     print("Accuracy: %0.2f (+/- %0.2f)" % (metrics[:, 0].mean(), metrics[:, 0].std() * 2))

@@ -228,3 +228,22 @@ class ReadoutLayer(KL.Layer):
         features = K.sum(features, axis=1)
 
         return features
+
+
+class Decoder(KL.Layer):
+    """Decode encoded graph state with node representations to adjacency matrix"""
+
+    def __init__(self, dropout=0., act=tf.nn.sigmoid, **kwargs):
+        super(Decoder, self).__init__(**kwargs)
+        self.dropout = dropout
+        self.act = act
+
+    def call(self, inputs):
+        # x = tf.nn.dropout(inputs, 1 - self.dropout)
+        x = inputs
+        x = tf.matmul(x, x, transpose_b=True)
+        output = self.act(x)
+        return output
+
+    def compute_output_shape(self, input_shape):
+        return input_shape[0], input_shape[1], input_shape[1]
