@@ -16,7 +16,7 @@ class FunctionalConnectomes(BrainDataset):
         super().__init__(dataset_name, meta_data)
         self.subject_ids = subject_ids
         self.stats = stats
-        self.class_mappings = {'Female': np.array([1, 0]), 'Male': np.array([0, 1])}
+        self.class_mappings = {'young': np.array([1, 0]), 'old': np.array([0, 1])}
 
     def get_brain_graph_and_class(self, subject_id):
         """Returns the brain graph and class for the given subject id
@@ -30,8 +30,8 @@ class FunctionalConnectomes(BrainDataset):
         matrix[matrix < 0] = 0
         coordinates = np.loadtxt(f'data/1000_Functional_Connectomes/{subject_id}_region_xyz_centers_file.txt')
         node_features = (coordinates - self.stats['min']) / (self.stats['max'] - self.stats['min'])
-        class_id = self.meta_data.loc[self.meta_data['network_name'] == subject_id]['gender'].values[0]
-        encoded_class = self.class_mappings[class_id]
+        class_id = self.meta_data.loc[self.meta_data['network_name'] == subject_id]['age'].values[0]
+        encoded_class = self.class_mappings['young' if class_id < 23 else 'old']
         return matrix, node_features, encoded_class
 
     def get_brain_class(self, subject_id):
@@ -42,8 +42,8 @@ class FunctionalConnectomes(BrainDataset):
         :return: encoded class
         :rtype: numpy.array
         """
-        class_id = self.meta_data.loc[self.meta_data['network_name'] == subject_id]['gender'].values[0]
-        encoded_class = self.class_mappings[class_id]
+        class_id = self.meta_data.loc[self.meta_data['network_name'] == subject_id]['age'].values[0]
+        encoded_class = self.class_mappings['young' if class_id < 23 else 'old']
         return encoded_class
 
 
@@ -96,7 +96,7 @@ if __name__ == '__main__':
     csv_logger = keras.callbacks.CSVLogger(logs_filepath)
 
     model.summary()
-    optimizer = Adam(0.001, amsgrad=True)
+    optimizer = Adam(0.001)
     model.compile(loss='categorical_crossentropy',
                   optimizer=optimizer,
                   metrics=['accuracy'])

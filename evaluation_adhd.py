@@ -89,7 +89,7 @@ def get_data(subject_ids):
     y = []
     for subject_id in subject_ids:
         matrix, node_features, encoded_class = dataset.get_brain_graph_and_class(subject_id)
-        adj = matrix.ravel()
+        adj = matrix[np.triu_indices(matrix.shape[0], k=1)]
         decoded_class = np.argmax(encoded_class)
         x.append(adj)
         y.append(decoded_class)
