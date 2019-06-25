@@ -12,7 +12,7 @@ from train_adhd import ADHD, train_brain_convolution_model, test_brain_convoluti
 from model.utils import read_adhd_data, find_statistics
 
 
-def evaluation_results(y_true, y_pred, decoded=False):
+def evaluation_results(y_true, y_pred, decoded=True):
     """Evaluate metric for the prediction
 
     :param y_true: true classes
@@ -22,24 +22,24 @@ def evaluation_results(y_true, y_pred, decoded=False):
     :param decoded: True if the predicted classes are decoded,
                     False if they are one-hot encoded
     :type decoded: bool
-    :return: accuracy, precision micro, precision macro,
-             recall micro, recall macro, f1 micro, f1 macro
+    :return: accuracy, precision macro, precision weighted,
+             recall macro, recall weighted, f1 macro, f1 weighted
     :type: list(float, float, float, float)
     """
     if not decoded:
-        y_true = np.argmax(y_true, axis=0)
-        y_pred = np.argmax(y_pred, axis=0)
+        y_true = np.argmax(y_true, axis=1)
+        y_pred = np.argmax(y_pred, axis=1)
 
     accuracy = accuracy_score(y_true, y_pred)
-    precision_micro = precision_score(y_true, y_pred, average='micro')
     precision_macro = precision_score(y_true, y_pred, average='macro')
-    recall_micro = recall_score(y_true, y_pred, average='micro')
+    precision_weighted = precision_score(y_true, y_pred, average='weighted')
     recall_macro = recall_score(y_true, y_pred, average='macro')
-    f1_micro = f1_score(y_true, y_pred, average='micro')
+    recall_weighted = recall_score(y_true, y_pred, average='weighted')
     f1_macro = f1_score(y_true, y_pred, average='macro')
+    f1_weighted = f1_score(y_true, y_pred, average='weighted')
 
-    return [accuracy, precision_micro, precision_macro,
-            recall_micro, recall_macro, f1_micro, f1_macro]
+    return [accuracy, precision_macro, precision_weighted,
+            recall_macro, recall_weighted, f1_macro, f1_weighted]
 
 
 def create_folds(file_path):
@@ -121,34 +121,35 @@ def evaluate_ordinary_classification(folds, method):
         classifier.fit(x, y)
         x, y = get_data(test)
         predicted = classifier.predict(x)
-        metrics.append(evaluation_results(y, predicted, decoded=True))
+        metrics.append(evaluation_results(y, predicted, 3))
 
     metrics = np.array(metrics)
     print("Accuracy: %0.2f (+/- %0.2f)" % (metrics[:, 0].mean(), metrics[:, 0].std() * 2))
-    print("Precision micro: %0.2f (+/- %0.2f)" % (metrics[:, 1].mean(), metrics[:, 1].std() * 2))
-    print("Precision macro: %0.2f (+/- %0.2f)" % (metrics[:, 2].mean(), metrics[:, 2].std() * 2))
-    print("Recall micro: %0.2f (+/- %0.2f)" % (metrics[:, 3].mean(), metrics[:, 3].std() * 2))
-    print("Recall macro: %0.2f (+/- %0.2f)" % (metrics[:, 4].mean(), metrics[:, 4].std() * 2))
-    print("F1 micro: %0.2f (+/- %0.2f)" % (metrics[:, 5].mean(), metrics[:, 5].std() * 2))
-    print("F1 macro: %0.2f (+/- %0.2f)" % (metrics[:, 6].mean(), metrics[:, 6].std() * 2))
+    print("Precision macro: %0.2f (+/- %0.2f)" % (metrics[:, 1].mean(), metrics[:, 1].std() * 2))
+    print("Precision weighted: %0.2f (+/- %0.2f)" % (metrics[:, 2].mean(), metrics[:, 2].std() * 2))
+    print("Recall macro: %0.2f (+/- %0.2f)" % (metrics[:, 3].mean(), metrics[:, 3].std() * 2))
+    print("Recall weighted: %0.2f (+/- %0.2f)" % (metrics[:, 4].mean(), metrics[:, 4].std() * 2))
+    print("F1 macro: %0.2f (+/- %0.2f)" % (metrics[:, 5].mean(), metrics[:, 5].std() * 2))
+    print("F1 weighted: %0.2f (+/- %0.2f)" % (metrics[:, 6].mean(), metrics[:, 6].std() * 2))
 
 
 def evaluate_brain_convolution_model(folds):
     metrics = []
     for train, test in folds:
         trained_model = train_brain_convolution_model(train)
-        x, y = get_data(test)
+        _, y = get_data(test)
         predicted = test_brain_convolution_model(test, trained_model)
-        metrics.append(evaluation_results(y, predicted, decoded=False))
+        predicted = np.argmax(predicted, axis=1)
+        metrics.append(evaluation_results(y, predicted, 3))
 
     metrics = np.array(metrics)
     print("Accuracy: %0.2f (+/- %0.2f)" % (metrics[:, 0].mean(), metrics[:, 0].std() * 2))
-    print("Precision micro: %0.2f (+/- %0.2f)" % (metrics[:, 1].mean(), metrics[:, 1].std() * 2))
-    print("Precision macro: %0.2f (+/- %0.2f)" % (metrics[:, 2].mean(), metrics[:, 2].std() * 2))
-    print("Recall micro: %0.2f (+/- %0.2f)" % (metrics[:, 3].mean(), metrics[:, 3].std() * 2))
-    print("Recall macro: %0.2f (+/- %0.2f)" % (metrics[:, 4].mean(), metrics[:, 4].std() * 2))
-    print("F1 micro: %0.2f (+/- %0.2f)" % (metrics[:, 5].mean(), metrics[:, 5].std() * 2))
-    print("F1 macro: %0.2f (+/- %0.2f)" % (metrics[:, 6].mean(), metrics[:, 6].std() * 2))
+    print("Precision macro: %0.2f (+/- %0.2f)" % (metrics[:, 1].mean(), metrics[:, 1].std() * 2))
+    print("Precision weighted: %0.2f (+/- %0.2f)" % (metrics[:, 2].mean(), metrics[:, 2].std() * 2))
+    print("Recall macro: %0.2f (+/- %0.2f)" % (metrics[:, 3].mean(), metrics[:, 3].std() * 2))
+    print("Recall weighted: %0.2f (+/- %0.2f)" % (metrics[:, 4].mean(), metrics[:, 4].std() * 2))
+    print("F1 macro: %0.2f (+/- %0.2f)" % (metrics[:, 5].mean(), metrics[:, 5].std() * 2))
+    print("F1 weighted: %0.2f (+/- %0.2f)" % (metrics[:, 6].mean(), metrics[:, 6].std() * 2))
 
 
 if __name__ == '__main__':
@@ -159,8 +160,9 @@ if __name__ == '__main__':
     with open(file_folds, 'rb') as f:
         folds = pickle.load(f)
 
+    evaluate_brain_convolution_model(folds)
     # evaluate_ordinary_classification(folds, 'bayes')
-    evaluate_ordinary_classification(folds, 'random_forest')
+    # evaluate_ordinary_classification(folds, 'random_forest')
     # evaluate_ordinary_classification(folds, 'linear_svm')
     # evaluate_ordinary_classification(folds, 'rbf_svm')
     # evaluate_ordinary_classification(folds, 'mlp')

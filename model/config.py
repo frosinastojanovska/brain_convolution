@@ -7,10 +7,10 @@ class Config:
     # Weight decay regularization
     WEIGHT_DECAY = 0.0001
 
-    DIM_CONV1 = 64
-    DIM_CONV2 = 64
-    DIM_CONV3 = 64
-    DIM_READOUT = 256
+    DIM_CONV1 = 20
+    DIM_CONV2 = 20
+    DIM_CONV3 = 20
+    DIM_READOUT = 64
 
     def __init__(self, node_dim, num_classes, batch_size=1):
         self.NODE_DIM = node_dim
